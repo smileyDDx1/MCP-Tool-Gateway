@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP Gateway — Approvals</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --ink: #14171a; --muted: #667085;
+    --line: #e3e6ea; --ok: #12805c; --no: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#101215; --card:#181b1f; --ink:#e8eaed; --muted:#9aa3ad;
+            --line:#282c31; --ok:#3ecf8e; --no:#f97066; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:32px 20px; background:var(--bg); color:var(--ink);
+         font:15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
+  .dot { display:inline-block; width:7px; height:7px; border-radius:50%;
+         background:var(--ok); margin-right:6px; vertical-align:middle; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:16px; margin-bottom:12px; }
+  .row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+  .tool { font-weight:600; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .age { color:var(--muted); font-size:12px; white-space:nowrap; }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:6px;
+        padding:10px; margin:12px 0; font-size:12.5px; overflow-x:auto; }
+  .btns { display:flex; gap:8px; }
+  button { flex:0 0 auto; padding:7px 16px; border-radius:6px; font-size:14px;
+           font-weight:500; cursor:pointer; border:1px solid var(--line);
+           background:var(--card); color:var(--ink); }
+  button:hover { border-color:var(--muted); }
+  button.approve { border-color:var(--ok); color:var(--ok); }
+  button.deny { border-color:var(--no); color:var(--no); }
+  button[disabled] { opacity:.45; cursor:default; }
+  .empty { color:var(--muted); text-align:center; padding:44px 0; font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pending approvals</h1>
+  <p class="sub"><span class="dot" id="dot"></span><span id="status">polling every 2s</span></p>
+  <div id="list"><p class="empty">Loading…</p></div>
+</main>
+
+<script>
+const list = document.getElementById('list');
+const status = document.getElementById('status');
+const busy = new Set();
+
+function age(iso) {
+  const s = Math.max(0, Math.round((Date.now() - new Date(iso)) / 1000));
+  return s < 60 ? `${s}s ago` : `${Math.floor(s / 60)}m ${s % 60}s ago`;
+}
+
+function render(items) {
+  if (!items.length) {
+    list.innerHTML = '<p class="empty">Nothing waiting. Fire a high-risk call and it shows up here.</p>';
+    return;
+  }
+  list.innerHTML = items.map(it => `
+    <div class="card">
+      <div class="row">
+        <span class="tool">${it.tool_name}</span>
+        <span class="age">${age(it.created_at)}</span>
+      </div>
+      <pre>${JSON.stringify(it.args, null, 2).replace(/</g, '&lt;')}</pre>
+      <div class="btns">
+        <button class="approve" data-id="${it.id}" data-do="approve"
+          ${busy.has(it.id) ? 'disabled' : ''}>Approve</button>
+        <button class="deny" data-id="${it.id}" data-do="deny"
+          ${busy.has(it.id) ? 'disabled' : ''}>Deny</button>
+      </div>
+    </div>`).join('');
+}
+
+async function decide(id, what) {
+  busy.add(id);
+  render(current);
+  try {
+    const r = await fetch(`/approvals/${id}/${what}`, { method: 'POST' });
+    if (!r.ok) status.textContent = `${what} failed: ${r.status}`;
+  } catch (e) {
+    status.textContent = `${what} failed: ${e}`;
+  } finally {
+    busy.delete(id);
+    poll();
+  }
+}
+
+list.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-do]');
+  if (btn && !btn.disabled) decide(btn.dataset.id, btn.dataset.do);
+});
+
+let current = [];
+async function poll() {
+  try {
+    const r = await fetch('/approvals');
+    current = await r.json();
+    render(current);
+    status.textContent = `${current.length} pending · updated ${new Date().toLocaleTimeString()}`;
+    document.getElementById('dot').style.background = 'var(--ok)';
+  } catch (e) {
+    status.textContent = 'gateway unreachable';
+    document.getElementById('dot').style.background = 'var(--no)';
+  }
+}
+
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

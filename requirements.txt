@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+python-dotenv
+mcp>=2         # Step 6 (v2 renamed FastMCP -> MCPServer)
+# after first install, pin exact versions with: pip freeze > requirements.txt
