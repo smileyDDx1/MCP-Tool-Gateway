@@ -1,3 +1,4 @@
+HEAD
 # MCP Tool Gateway
 
 A minimal control plane between AI agents and organizational tools, with a
@@ -232,3 +233,7 @@ something broke. Flip this in `gateway.run_tool` if you'd rather it raise.
 3. Redis Pub/Sub so the gate works across multiple workers.
 4. Sandboxed code-execution tool with real isolation (gVisor/Firecracker, no network, non-root).
 5. Per-tenant policies and role-based approvals.
+
+# MCP-Tool-Gateway
+The MCP Tool Gateway is a centralized proxy and orchestration service that connects LLM clients seamlessly to multiple Model Context Protocol (MCP) servers. It provides unified tool discovery, authentication, and secure request routing across distributed tools and external APIs.
+
