@@ -10,8 +10,7 @@ agent is allowed to proceed. Every call is written to an audit log.
 
 **Design goal:** keep it linear and synchronous. The approval "pause" is a plain
 `await` on an in-memory `asyncio.Event` under a timeout — not a distributed
-pause/resume state machine. No Docker sandbox, no arbitrary code execution, no
-multi-tenancy, no Redis. Those are deliberate v1 exclusions.
+pause/resume state machine.
 
 ## How it works
 
